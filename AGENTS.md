@@ -18,6 +18,7 @@ Instructions for AI assistants working in this repository.
 4. Keep browser-side API shapes in `web/src/lib/types.ts` aligned with Rust DTOs in `blink-monitor/crates/shared/src/models.rs`.
 5. Treat `blink-monitor` as production code: format with `cargo fmt`, validate with `cargo clippy -- -D warnings`.
 6. Preserve the Stick IR command strings exactly (`vol_up`, `ch_down`, digits, etc.).
+7. Never write plaintext dashboard credentials into source or docs. Regenerate the static PBKDF2 block with `BLINK_USERNAME=... BLINK_PASSWORD=... make auth-hash`.
 
 ## Common commands
 

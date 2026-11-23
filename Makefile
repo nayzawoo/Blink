@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev build check clean \
+.PHONY: help install dev build check clean auth-hash \
         web-install web-dev web-build web-lint web-format web-typecheck web-pwa-assets \
         monitor-check monitor-build monitor-test monitor-fmt monitor-lint \
         monitor-run-chat monitor-run-set setup-env
@@ -63,6 +63,9 @@ monitor-run-set: ## Run set-agent with blink-monitor/.env
 setup-env: ## Create blink-monitor/.env from the chat example
 	@test -f blink-monitor/.env || cp blink-monitor/.env.chat.example blink-monitor/.env
 	@echo "Edit blink-monitor/.env before starting an agent."
+
+auth-hash: ## Print a new PBKDF2 credential block for web/src/lib/auth-credentials.ts
+	@node scripts/generate-auth-hash.mjs
 
 ## Aggregate
 

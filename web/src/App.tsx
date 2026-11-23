@@ -1,6 +1,7 @@
 import { useState } from "react"
-import { Activity, Moon, Settings, Sun, WifiOff } from "lucide-react"
+import { Activity, LogOut, Moon, Settings, Sun, WifiOff } from "lucide-react"
 
+import { LoginScreen } from "@/components/login-screen"
 import { RatesCard } from "@/components/rates-card"
 import { RemotePanel } from "@/components/remote-panel"
 import { ServerCard } from "@/components/server-card"
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useMonitor } from "@/hooks/use-monitor"
 import { loadSettings, saveSettings, settingsConfigured, type Settings as AppSettings } from "@/lib/api"
+import { clearAuthentication, isAuthenticated } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 
 function isDown(data: ReturnType<typeof useMonitor>): boolean {
@@ -19,7 +21,7 @@ function isDown(data: ReturnType<typeof useMonitor>): boolean {
   return !data.status.ok || data.status.services.some((service) => !service.up)
 }
 
-export default function App() {
+function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [settings, setSettings] = useState<AppSettings>(loadSettings)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const { theme, setTheme } = useTheme()
@@ -71,6 +73,15 @@ export default function App() {
             <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
               <Settings className="size-4" />
               <span className="hidden sm:inline">Settings</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onLogout}
+              aria-label="Sign out"
+              title="Sign out"
+            >
+              <LogOut className="size-4" />
             </Button>
           </div>
         </div>
@@ -130,5 +141,22 @@ export default function App() {
         />
       )}
     </div>
+  )
+}
+
+export default function App() {
+  const [authenticated, setAuthenticated] = useState(isAuthenticated)
+
+  if (!authenticated) {
+    return <LoginScreen onSuccess={() => setAuthenticated(true)} />
+  }
+
+  return (
+    <Dashboard
+      onLogout={() => {
+        clearAuthentication()
+        setAuthenticated(false)
+      }}
+    />
   )
 }

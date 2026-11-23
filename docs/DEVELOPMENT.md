@@ -33,7 +33,19 @@ Override upstreams without touching code:
 VITE_CHAT_UPSTREAM=https://chat.example.com make dev
 ```
 
-In the UI, open **Settings** and paste the Blink API key. The key is saved only in this browser.
+In the UI, sign in first, then open **Settings** and paste the Blink API key. The key is saved only in this browser.
+
+### Dashboard login
+
+`web/src/lib/auth-credentials.ts` holds a salted PBKDF2-SHA256 verifier for the username and password. The login form derives hashes with Web Crypto and compares them in constant time. A successful sign-in is kept in `sessionStorage`; use the logout button in the header to clear it.
+
+Rotate credentials with:
+
+```bash
+BLINK_USERNAME='new-user' BLINK_PASSWORD='new-password' make auth-hash
+```
+
+Never commit the plaintext values.
 
 ### Web scripts
 

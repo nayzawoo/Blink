@@ -9,6 +9,7 @@ Blink is a PWA dashboard for monitoring IoT/backend servers and controlling a Sa
 - Samsung TV remote backed by the Stick IR single-slot command API (latest press wins).
 - Optional Payoneer/Wise exchange-rate card.
 - Installable PWA with offline app shell, manifest, and generated icons.
+- Login gate using salted PBKDF2-SHA256 hashes stored statically — no plaintext credentials in the repo.
 - Browser-local settings for API keys and endpoint overrides — no secrets in the bundle.
 - Rust workspace with Slack alerts and SQLite history for both agents.
 
@@ -37,7 +38,7 @@ make install
 make dev
 ```
 
-Open <http://localhost:5173>, click **Settings**, and enter:
+Open <http://localhost:5173>, sign in, then click **Settings** and enter:
 
 - `BLINK_API_KEY` — must match the key configured on the agents.
 - Stick IR token — only needed for the TV remote.
@@ -49,6 +50,20 @@ Build and verify everything:
 make check
 make build
 ```
+
+## Login credentials
+
+The dashboard verifies the configured username and password in the browser using PBKDF2-SHA256. `web/src/lib/auth-credentials.ts` contains only the salt, iteration count, and derived hashes.
+
+To rotate credentials:
+
+```bash
+BLINK_USERNAME='new-user' BLINK_PASSWORD='new-password' make auth-hash
+```
+
+Paste the printed block into `web/src/lib/auth-credentials.ts`. Increment `version` if you want existing sessions invalidated.
+
+> This is a client-side gate, not server-side security. Put the PWA behind real authentication if it must be protected against determined access.
 
 ## Monitor agents
 
