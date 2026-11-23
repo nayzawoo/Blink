@@ -1,0 +1,12 @@
+---
+description: Core Blink repository conventions and verification commands
+alwaysApply: true
+---
+
+# Blink project rules
+
+- Root `AGENTS.md` is authoritative. Follow it for commands, API contracts, and security rules.
+- Use `make help` to discover shortcuts; prefer `make check` and `make build` over ad-hoc commands.
+- Never commit secrets, `.env`, `*.db`, `web/dist/`, `web/node_modules/`, or `blink-monitor/target/`.
+- Keep `docs/` and `AGENTS.md` in sync when architecture or commands change.
+- Project skills live in `.cursor/skills/` and are mirrored in `.agents/skills/`.

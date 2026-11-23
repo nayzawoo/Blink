@@ -1,0 +1,25 @@
+# Dependencies and build output
+node_modules/
+dist/
+target/
+*.tsbuildinfo
+
+# Secrets and local env
+.env
+.env.*
+!.env.example
+web/.env
+web/.env.*
+!web/.env.example
+
+# Runtime data
+blink-monitor/data/
+*.db
+*.db-shm
+*.db-wal
+
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/

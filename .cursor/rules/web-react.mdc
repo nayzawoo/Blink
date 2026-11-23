@@ -1,0 +1,14 @@
+---
+description: React, Vite, Tailwind and shadcn conventions for the Blink PWA
+globs: web/src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Web rules
+
+- Use React function components and colocate small subcomponents in the file that uses them.
+- Add shadcn primitives with `npx shadcn@latest add <component> --cwd web --yes`; never edit generated `src/components/ui/*` files by hand unless necessary.
+- Keep API DTOs in `src/lib/types.ts`, fetch functions in `src/lib/api.ts`, and formatting helpers in `src/lib/format.ts`.
+- Settings are browser-local (`blink.settings.v1`). Never read secrets from `import.meta.env` in production code.
+- Refresh intervals and remote commands must remain user-configurable rather than hardcoded.
+- Run `npm run lint` and `npm run build --prefix web` after changes.
