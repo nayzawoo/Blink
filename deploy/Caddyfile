@@ -1,0 +1,52 @@
+# Blink production reverse proxy.
+#
+# Environment (systemd EnvironmentFile or exported before `caddy run`):
+#   BLINK_DOMAIN  public hostname                  (default blink.mm2d.xyz)
+#   WEB_UPSTREAM  PM2 static server                (default 127.0.0.1:8787)
+#   CHAT_AGENT    chat-agent bind                  (default 127.0.0.1:8790)
+#   SET_AGENT     set-agent bind                   (default 127.0.0.1:8788)
+#   STICK_IR      Stick IR API bind                (default 127.0.0.1:3020)
+#
+# Local check:  BLINK_DOMAIN=localhost caddy run --config deploy/Caddyfile
+# Validate:     caddy validate --config deploy/Caddyfile --adapter caddyfile
+
+{$BLINK_DOMAIN:blink.mm2d.xyz} {
+	encode zstd gzip
+
+	# Same-origin API aliases used by the dashboard defaults.
+	# The built app calls /chat-api, /set-api, and /stick-api unless overridden
+	# in Settings. /blink and /api/blink are kept for the legacy iOS paths.
+	handle_path /chat-api/* {
+		reverse_proxy {$CHAT_AGENT:127.0.0.1:8790}
+	}
+
+	handle_path /blink/* {
+		reverse_proxy {$CHAT_AGENT:127.0.0.1:8790}
+	}
+
+	handle_path /set-api/* {
+		reverse_proxy {$SET_AGENT:127.0.0.1:8788}
+	}
+
+	handle_path /api/blink/* {
+		reverse_proxy {$SET_AGENT:127.0.0.1:8788}
+	}
+
+	# /stick-api/commands -> /api/stick/ir/commands
+	handle_path /stick-api/* {
+		rewrite * /api/stick/ir{uri}
+		reverse_proxy {$STICK_IR:127.0.0.1:3020}
+	}
+
+	# Built PWA served by PM2 with SPA fallback.
+	handle {
+		reverse_proxy {$WEB_UPSTREAM:127.0.0.1:8787}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}

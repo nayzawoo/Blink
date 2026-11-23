@@ -4,7 +4,7 @@
 
 ```text
 Browser (Blink PWA)
-  ├── /status, /history  ──► reverse proxy ──► chat-agent :8787
+  ├── /status, /history  ──► reverse proxy ──► chat-agent :8790
   │                                        └─► set-agent  :8788
   └── /commands          ──► reverse proxy ──► stick-ir-api :3020
 ```

@@ -4,7 +4,7 @@ Rust workspace: two small agents that expose the same HTTP API for the Blink iPh
 
 | Binary | Typical host | Health check env | Bind |
 |--------|--------------|------------------|------|
-| [`chat-agent`](crates/chat-agent) | `chatserver` | `CHAT_CHECK` | `127.0.0.1:8787` |
+| [`chat-agent`](crates/chat-agent) | `chatserver` | `CHAT_CHECK` | `127.0.0.1:8790` |
 | [`set-agent`](crates/set-agent) | `mapserver` | `SET_CHECK` | `127.0.0.1:8788` |
 
 Shared library [`crates/shared`](crates/shared): collector (`sysinfo`), SQLite, Axum routes, Bearer auth.
@@ -135,7 +135,7 @@ curl -sS -m 60 -H "Authorization: Bearer $KEY" \
 Local (on the server, agent bound to localhost):
 
 ```bash
-curl -sS -H "Authorization: Bearer $KEY" http://127.0.0.1:8787/status
+curl -sS -H "Authorization: Bearer $KEY" http://127.0.0.1:8790/status
 curl -sS -H "Authorization: Bearer $KEY" http://127.0.0.1:8788/status
 ```
 
@@ -191,7 +191,7 @@ Expose only via TLS reverse proxy, e.g.:
 
 ```nginx
 location /blink/ {
-    proxy_pass http://127.0.0.1:8787/;   # 8788 on mapserver
+    proxy_pass http://127.0.0.1:8790/;   # 8788 on mapserver
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -199,7 +199,7 @@ location /blink/ {
 }
 ```
 
-Do not open `8787` / `8788` on the public interface.
+Do not open `8790` / `8788` on the public interface.
 
 ## Security
 

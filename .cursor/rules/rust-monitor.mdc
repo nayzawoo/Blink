@@ -9,6 +9,6 @@ alwaysApply: false
 - Workspace denies `unsafe`; keep that lint intact in `blink-monitor/Cargo.toml`.
 - Keep `StatusSnapshot` and `HistoryPoint` field names stable; the web client depends on them exactly.
 - Use `tracing` instead of `println!`.
-- Avoid exposing ports `8787`/`8788` directly; assume a TLS reverse proxy.
+- Avoid exposing ports `8790`/`8788` directly; assume a TLS reverse proxy.
 - Run `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`, and `cargo test --workspace` before finishing.
 - The `rust-best-practices` skill applies to all work in this glob.

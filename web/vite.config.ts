@@ -59,6 +59,11 @@ export default defineConfig(({ mode }) => {
         "@": resolve(import.meta.dirname, "./src"),
       },
     },
+    preview: {
+      host: "127.0.0.1",
+      port: 8787,
+      strictPort: true,
+    },
     server: {
       proxy: {
         "/chat-api": {

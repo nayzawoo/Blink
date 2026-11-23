@@ -69,11 +69,13 @@ Paste the printed block into `web/src/lib/auth-credentials.ts`. Increment `versi
 
 ```bash
 make setup-env         # creates blink-monitor/.env from the chat example
-make monitor-run-chat  # http://127.0.0.1:8787
+make monitor-run-chat  # http://127.0.0.1:8790
 make monitor-run-set   # copy .env.set.example and set BIND_ADDR=127.0.0.1:8788
 ```
 
-See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for local agent setup and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for reverse-proxy/PWA deployment.
+For production, `make pm2-start` serves the built PWA on `127.0.0.1:8787` and `deploy/Caddyfile` terminates TLS for `blink.mm2d.xyz`.
+
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for local agent setup and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for PM2, Caddy, and reverse-proxy details.
 
 ## Documentation
 

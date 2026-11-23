@@ -52,7 +52,7 @@ impl Config {
         }
 
         let default_bind = match agent {
-            AgentProfile::Chat => "127.0.0.1:8787",
+            AgentProfile::Chat => "127.0.0.1:8790",
             AgentProfile::Set => "127.0.0.1:8788",
         };
         let bind: SocketAddr = env::var("BIND_ADDR")

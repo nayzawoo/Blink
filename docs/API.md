@@ -2,7 +2,7 @@
 
 ## Monitor agents
 
-Base paths in production are typically `https://chat.mm2d.xyz/blink` and `https://api.mm2d.xyz/blink`. In development use the Vite proxy prefixes `/chat-api` and `/set-api`.
+Base paths in production are typically same-origin (`/chat-api`, `/set-api`, `/stick-api`) through Caddy, or `https://chat.mm2d.xyz/blink` and `https://api.mm2d.xyz/blink` when hitting the agents directly. In development use the Vite proxy prefixes `/chat-api` and `/set-api`.
 
 All monitor endpoints except `/healthz` require:
 

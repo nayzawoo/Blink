@@ -3,7 +3,9 @@
 .PHONY: help install dev build check clean auth-hash \
         web-install web-dev web-build web-lint web-format web-typecheck web-pwa-assets \
         monitor-check monitor-build monitor-test monitor-fmt monitor-lint \
-        monitor-run-chat monitor-run-set setup-env
+        monitor-run-chat monitor-run-set setup-env \
+        pm2-start pm2-reload pm2-stop pm2-status pm2-logs pm2-save \
+        caddy-check caddy-run
 
 help: ## Show available shortcuts
 	@awk 'BEGIN { FS = ":.*## "; printf "\nUsage: make <target>\n\n" } /^[a-zA-Z0-9_-]+:.*## / { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } END { printf "\n" }' $(MAKEFILE_LIST)
@@ -66,6 +68,32 @@ setup-env: ## Create blink-monitor/.env from the chat example
 
 auth-hash: ## Print a new PBKDF2 credential block for web/src/lib/auth-credentials.ts
 	@node scripts/generate-auth-hash.mjs
+
+## Production
+
+pm2-start: web-build ## Build the PWA and start or reload it under PM2 on 127.0.0.1:8787
+	pm2 startOrReload ecosystem.config.cjs --update-env
+
+pm2-reload: web-build ## Rebuild and reload the PM2 web process
+	pm2 reload blink-web --update-env
+
+pm2-stop: ## Remove the PM2 web process
+	-pm2 delete blink-web
+
+pm2-status: ## Show PM2 process status
+	pm2 status
+
+pm2-logs: ## Tail the PM2 web logs
+	pm2 logs blink-web
+
+pm2-save: ## Persist the current PM2 process list
+	pm2 save
+
+caddy-check: ## Validate deploy/Caddyfile (requires caddy)
+	caddy validate --config deploy/Caddyfile --adapter caddyfile
+
+caddy-run: ## Run Caddy in the foreground with deploy/Caddyfile
+	caddy run --config deploy/Caddyfile --adapter caddyfile
 
 ## Aggregate
 
