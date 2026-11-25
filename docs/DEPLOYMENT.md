@@ -20,9 +20,9 @@ Outputs:
 | `chat-agent` | `127.0.0.1:8790` | loopback only |
 | `set-agent` | `127.0.0.1:8788` | loopback only |
 | Stick IR API | `127.0.0.1:3020` | loopback only |
-| Caddy | `:80`, `:443` | public |
+| nginx | `:80`, `:443` | public |
 
-Only Caddy should listen publicly. Never expose `8787`, `8788`, `8790`, or `3020`.
+Only nginx should listen publicly. Never expose `8787`, `8788`, `8790`, or `3020`.
 
 ## Web app with PM2
 
@@ -80,74 +80,57 @@ sudo systemctl enable --now blink-chat blink-set
 
 Env files should set at least `BLINK_API_KEY`, `CHAT_CHECK`/`SET_CHECK`, `BIND_ADDR`, `HOST_NAME`, and `DB_PATH`.
 
-## Caddy reverse proxy
+## nginx reverse proxy
 
-[`deploy/Caddyfile`](../deploy/Caddyfile) serves the PWA and proxies the API on the same origin, so the browser defaults (`/chat-api`, `/set-api`, `/stick-api`) work without changing Settings. Caddy obtains and renews TLS certificates automatically; point an `A`/`AAAA` record for `BLINK_DOMAIN` at the host and allow inbound `80`/`443`.
+nginx serves the PWA and proxies the API on the same origin, so the browser defaults (`/chat-api`, `/set-api`, `/stick-api`) work without changing Settings.
 
 | Path | Upstream | Purpose |
 | --- | --- | --- |
-| `/` | `127.0.0.1:8787` | PM2-served PWA with SPA fallback |
+| `/` | `127.0.0.1:8787` (or static `web/dist`) | PWA with SPA fallback |
 | `/chat-api/*`, `/blink/*` | `127.0.0.1:8790` | chat monitor |
-| `/set-api/*`, `/api/blink/*` | `127.0.0.1:8788` | map monitor |
+| `/set-api/*`, `/api/blink/*` | `127.0.0.1:8788` (or `https://api.mm2d.xyz/blink`) | map monitor |
 | `/stick-api/*` | `127.0.0.1:3020` | Stick IR (`/commands` → `/api/stick/ir/commands`) |
 
-Install Caddy, then copy the config and environment file:
+### mm2d.xyz production edge (nginx stream on `:443` + HTTP on `127.0.0.1:8443`)
+
+On the production host, nginx `stream` owns public `:443`, uses `ssl_preread` on the SNI to route special names to xray Reality, and forwards everything else to nginx `http` on `127.0.0.1:8443`.
+
+1. Point `blink.mm2d.xyz` at the host and allow inbound `80`/`443`.
+2. Issue a certificate via the `/var/www/certbot` webroot:
 
 ```bash
-sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
-sudo mkdir -p /etc/blink
-sudo cp deploy/caddy.env.example /etc/blink/caddy.env
-sudo editor /etc/blink/caddy.env    # set BLINK_DOMAIN and upstreams
+sudo certbot certonly --webroot -w /var/www/certbot -d blink.mm2d.xyz \
+  --deploy-hook "systemctl reload nginx"
 ```
 
-`/etc/blink/caddy.env`:
+3. Move `chat-agent` off port `8787` by setting `BIND_ADDR=127.0.0.1:8790` in `/opt/blink-monitor/chat.env`, restarting `blink-chat`, and updating the `/blink/` upstream in `/etc/nginx/sites-available/chat.conf` to `127.0.0.1:8790`.
+4. Add an nginx server block (e.g. `/etc/nginx/sites-available/blink.conf`), symlink it into `/etc/nginx/sites-enabled/`, then run `sudo nginx -t && sudo systemctl reload nginx`.
 
-```dotenv
-BLINK_DOMAIN=blink.mm2d.xyz
-WEB_UPSTREAM=127.0.0.1:8787
-CHAT_AGENT=127.0.0.1:8790
-SET_AGENT=127.0.0.1:8788
-STICK_IR=127.0.0.1:3020
-```
-
-Pass that file to Caddy with a systemd drop-in (`/etc/systemd/system/caddy.service.d/blink.conf`):
-
-```ini
-[Service]
-EnvironmentFile=/etc/blink/caddy.env
-```
-
-Then validate and start:
-
-```bash
-sudo systemctl daemon-reload
-sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
-sudo systemctl enable --now caddy
-```
-
-Local test without a public domain:
-
-```bash
-BLINK_DOMAIN=localhost make caddy-run
-```
-
-`make caddy-check` validates `deploy/Caddyfile` without starting Caddy.
-
-If `set-agent` runs on another host, point `SET_AGENT` at it and add the `/blink` prefix that the remote agent expects; the default assumes the same loopback host as the chat agent.
-
-### Alternative: nginx
+### Example nginx config
 
 ```nginx
 server {
-    listen 443 ssl http2;
+    listen 80;
+    listen [::]:80;
     server_name blink.mm2d.xyz;
 
-    root /var/www/blink-web;
-    index index.html;
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
 
     location / {
-        try_files $uri $uri/ /index.html;
+        return 301 https://$host$request_uri;
     }
+}
+
+server {
+    listen 127.0.0.1:8443 ssl; # or `listen 443 ssl http2;` if not behind nginx stream
+    server_name blink.mm2d.xyz;
+
+    ssl_certificate /etc/letsencrypt/live/blink.mm2d.xyz/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/blink.mm2d.xyz/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
     location /chat-api/ {
         proxy_pass http://127.0.0.1:8790/;
@@ -171,10 +154,17 @@ server {
         proxy_set_header Host $host;
         proxy_read_timeout 10s;
     }
+
+    location / {
+        proxy_pass http://127.0.0.1:8787;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
 }
 ```
 
-Nginx would serve `web/dist` directly (`/var/www/blink-web`) instead of the PM2 process.
+Alternatively, nginx can serve `web/dist` directly (`root /var/www/blink-web; try_files $uri $uri/ /index.html;`) instead of proxying to the PM2 process.
 
 If the PWA is hosted on a different origin, add CORS headers for `GET, POST, OPTIONS` and the `Authorization, Content-Type` headers to the proxied locations.
 

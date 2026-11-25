@@ -2,7 +2,7 @@
  * PM2 configuration for the production Blink PWA.
  *
  * `script: "serve"` is PM2's built-in static file server. It serves the Vite
- * build in `web/dist` with SPA fallback on 127.0.0.1:8787; Caddy terminates
+ * build in `web/dist` with SPA fallback on 127.0.0.1:8787; nginx terminates
  * TLS and proxies the public domain to it.
  *
  *   pm2 start ecosystem.config.cjs

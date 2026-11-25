@@ -4,8 +4,7 @@
         web-install web-dev web-build web-lint web-format web-typecheck web-pwa-assets \
         monitor-check monitor-build monitor-test monitor-fmt monitor-lint \
         monitor-run-chat monitor-run-set setup-env \
-        pm2-start pm2-reload pm2-stop pm2-status pm2-logs pm2-save \
-        caddy-check caddy-run
+        pm2-start pm2-reload pm2-stop pm2-status pm2-logs pm2-save
 
 help: ## Show available shortcuts
 	@awk 'BEGIN { FS = ":.*## "; printf "\nUsage: make <target>\n\n" } /^[a-zA-Z0-9_-]+:.*## / { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } END { printf "\n" }' $(MAKEFILE_LIST)
@@ -88,12 +87,6 @@ pm2-logs: ## Tail the PM2 web logs
 
 pm2-save: ## Persist the current PM2 process list
 	pm2 save
-
-caddy-check: ## Validate deploy/Caddyfile (requires caddy)
-	caddy validate --config deploy/Caddyfile --adapter caddyfile
-
-caddy-run: ## Run Caddy in the foreground with deploy/Caddyfile
-	caddy run --config deploy/Caddyfile --adapter caddyfile
 
 ## Aggregate
 
