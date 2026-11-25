@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react"
-import { ShieldAlert } from "lucide-react"
+import { Bell, BellOff, BellRing, Send, ShieldAlert } from "lucide-react"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import type { usePushNotifications } from "@/hooks/use-push"
 import type { Settings } from "@/lib/api"
 
 interface SettingsDialogProps {
@@ -20,9 +22,10 @@ interface SettingsDialogProps {
   onOpenChange: (open: boolean) => void
   settings: Settings
   onSave: (settings: Settings) => void
+  push: ReturnType<typeof usePushNotifications>
 }
 
-export function SettingsDialog({ open, onOpenChange, settings, onSave }: SettingsDialogProps) {
+export function SettingsDialog({ open, onOpenChange, settings, onSave, push }: SettingsDialogProps) {
   const [draft, setDraft] = useState<Settings>(settings)
 
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) => {
@@ -130,6 +133,62 @@ export function SettingsDialog({ open, onOpenChange, settings, onSave }: Setting
               value={draft.refreshMs}
               onChange={(event) => update("refreshMs", Number(event.target.value))}
             />
+          </div>
+
+          <div className="space-y-3 rounded-lg border p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                {push.subscribed ? <BellRing className="size-4 text-emerald-500" /> : <Bell className="size-4" />}
+                Push notifications
+              </div>
+              <Badge variant={push.subscribed ? "secondary" : "outline"}>
+                {push.subscribed ? "Enabled" : "Off"}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {push.needsHomeScreenInstall
+                ? "On iOS, tap Share → Add to Home Screen, then open Blink from the Home Screen icon to enable Web Push."
+                : "Receive instant alerts on this device when a monitored service goes down or recovers."}
+            </p>
+            {push.error && <p className="text-xs text-destructive">{push.error}</p>}
+            {push.notice && <p className="text-xs text-emerald-600 dark:text-emerald-400">{push.notice}</p>}
+            <div className="flex flex-wrap gap-2">
+              {push.subscribed ? (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={push.busy}
+                    onClick={() => void push.sendTest()}
+                  >
+                    <Send className="size-3.5" />
+                    Send test
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={push.busy}
+                    onClick={() => void push.disable()}
+                  >
+                    <BellOff className="size-3.5" />
+                    Disable
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={push.busy || (!push.supported && !push.needsHomeScreenInstall)}
+                  onClick={() => void push.enable()}
+                >
+                  <Bell className="size-3.5" />
+                  Enable alerts
+                </Button>
+              )}
+            </div>
           </div>
 
           <DialogFooter>

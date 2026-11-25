@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       VitePWA({
         registerType: "prompt",
-        includeAssets: ["favicon.ico", "logo.svg", "apple-touch-icon-180x180.png"],
+        includeAssets: ["favicon.ico", "logo.svg", "apple-touch-icon-180x180.png", "push-sw.js"],
         manifest: {
           id: "/",
           name: "Blink · IoT Dashboard",
@@ -59,6 +59,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           cleanupOutdatedCaches: true,
+          importScripts: ["/push-sw.js"],
           navigateFallback: "/index.html",
           navigateFallbackDenylist: [/^\/(chat-api|set-api|stick-api|blink|api)\//],
           globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],

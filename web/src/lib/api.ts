@@ -113,6 +113,62 @@ export function fetchRates(): Promise<RatesResponse> {
   return getJson<RatesResponse>(RATES_URL, "")
 }
 
+export async function fetchPushPublicKey(settings: Settings): Promise<string> {
+  const data = await getJson<{ public_key: string }>(
+    `${normalizeBase(settings.chatBaseUrl)}/push/public-key`,
+    settings.blinkApiKey
+  )
+  return data.public_key
+}
+
+export async function subscribePush(
+  subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
+  settings: Settings
+): Promise<void> {
+  const response = await fetch(`${normalizeBase(settings.chatBaseUrl)}/push/subscribe`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(settings.blinkApiKey),
+    },
+    body: JSON.stringify(subscription),
+    signal: timeoutSignal(8000),
+  })
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`.trim())
+  }
+}
+
+export async function unsubscribePush(endpoint: string, settings: Settings): Promise<void> {
+  const response = await fetch(`${normalizeBase(settings.chatBaseUrl)}/push/unsubscribe`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(settings.blinkApiKey),
+    },
+    body: JSON.stringify({ endpoint }),
+    signal: timeoutSignal(8000),
+  })
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`.trim())
+  }
+}
+
+export async function sendTestPush(settings: Settings): Promise<{ delivered: number }> {
+  const response = await fetch(`${normalizeBase(settings.chatBaseUrl)}/push/test`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      ...authHeaders(settings.blinkApiKey),
+    },
+    signal: timeoutSignal(10_000),
+  })
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`.trim())
+  }
+  return (await response.json()) as { delivered: number }
+}
+
 export const STICK_COMMANDS = [
   { cmd: "power", label: "Power", tone: "danger" },
   { cmd: "source", label: "Source", tone: "default" },

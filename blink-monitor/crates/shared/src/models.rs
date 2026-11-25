@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, Serialize)]
@@ -52,4 +52,34 @@ pub struct HistoryPoint {
     pub mem_used_pct: f32,
     pub disk_used_pct: f32,
     pub services: BTreeMap<String, bool>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PushKeys {
+    pub p256dh: String,
+    pub auth: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PushSubscriptionRequest {
+    pub endpoint: String,
+    pub keys: PushKeys,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct PushUnsubscribeRequest {
+    pub endpoint: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct PushPublicKeyResponse {
+    pub public_key: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct PushPayload {
+    pub title: String,
+    pub body: String,
+    pub url: String,
+    pub tag: String,
 }

@@ -29,8 +29,10 @@ async fn main() -> Result<()> {
 
     let state = AppState {
         api_key: config.api_key.clone(),
+        host_name: config.host_name.clone(),
         db,
         latest,
+        web_push: config.web_push.clone(),
     };
 
     let app = router(state);

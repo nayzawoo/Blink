@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::models::{HistoryPoint, StatusSnapshot};
+use crate::models::{HistoryPoint, PushKeys, PushSubscriptionRequest, StatusSnapshot};
 use anyhow::{Context, Result};
 use chrono::{DateTime, TimeZone, Utc};
 use rusqlite::{Connection, params};
@@ -46,6 +46,13 @@ impl Db {
                 disk_used_pct REAL NOT NULL DEFAULT 0,
                 s1_up_pct REAL NOT NULL,
                 s2_up_pct REAL NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS push_subscriptions (
+                endpoint TEXT NOT NULL PRIMARY KEY,
+                p256dh TEXT NOT NULL,
+                auth TEXT NOT NULL,
+                created_at INTEGER NOT NULL
             );
             ",
         )?;
@@ -225,6 +232,55 @@ impl Db {
                 disk_used_pct,
                 services: self.services_map(s1, s2),
             });
+        }
+        Ok(out)
+    }
+
+    pub fn upsert_push_subscription(&self, sub: &PushSubscriptionRequest) -> Result<()> {
+        let conn = self.conn.lock().expect("db lock");
+        conn.execute(
+            "INSERT INTO push_subscriptions (endpoint, p256dh, auth, created_at)
+             VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT(endpoint) DO UPDATE SET
+               p256dh = excluded.p256dh,
+               auth = excluded.auth,
+               created_at = excluded.created_at",
+            params![
+                sub.endpoint,
+                sub.keys.p256dh,
+                sub.keys.auth,
+                Utc::now().timestamp(),
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_push_subscription(&self, endpoint: &str) -> Result<()> {
+        let conn = self.conn.lock().expect("db lock");
+        conn.execute(
+            "DELETE FROM push_subscriptions WHERE endpoint = ?1",
+            params![endpoint],
+        )?;
+        Ok(())
+    }
+
+    pub fn list_push_subscriptions(&self) -> Result<Vec<PushSubscriptionRequest>> {
+        let conn = self.conn.lock().expect("db lock");
+        let mut stmt = conn.prepare(
+            "SELECT endpoint, p256dh, auth FROM push_subscriptions ORDER BY created_at DESC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(PushSubscriptionRequest {
+                endpoint: row.get(0)?,
+                keys: PushKeys {
+                    p256dh: row.get(1)?,
+                    auth: row.get(2)?,
+                },
+            })
+        })?;
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(row?);
         }
         Ok(out)
     }

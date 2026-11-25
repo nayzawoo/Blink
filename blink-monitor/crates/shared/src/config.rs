@@ -26,6 +26,13 @@ pub struct ServiceCheck {
 }
 
 #[derive(Clone, Debug)]
+pub struct WebPushConfig {
+    pub public_key: String,
+    pub private_key: String,
+    pub subject: String,
+}
+
+#[derive(Clone, Debug)]
 pub struct Config {
     pub agent: AgentProfile,
     pub api_key: String,
@@ -38,8 +45,10 @@ pub struct Config {
     pub rollup_retain: Duration,
     /// Slack Incoming Webhook URL (`SLACK_WEBHOOK_URL`). Empty = alerts off.
     pub slack_webhook_url: Option<String>,
-    /// How long a check must stay down before Slack fires (default 5s).
+    /// How long a check must stay down before alerts fire (default 5s).
     pub slack_down_secs: Duration,
+    /// Optional VAPID Web Push configuration (`VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY`).
+    pub web_push: Option<WebPushConfig>,
 }
 
 impl Config {
@@ -115,6 +124,29 @@ impl Config {
             .parse()
             .context("invalid SLACK_DOWN_SECS")?;
 
+        let vapid_public = env::var("VAPID_PUBLIC_KEY")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+        let vapid_private = env::var("VAPID_PRIVATE_KEY")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+        let vapid_subject = env::var("VAPID_SUBJECT")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "mailto:admin@mm2d.xyz".into());
+
+        let web_push = match (vapid_public, vapid_private) {
+            (Some(public_key), Some(private_key)) => Some(WebPushConfig {
+                public_key,
+                private_key,
+                subject: vapid_subject,
+            }),
+            _ => None,
+        };
+
         Ok(Self {
             agent,
             api_key,
@@ -128,6 +160,7 @@ impl Config {
             rollup_retain: Duration::from_secs(60 * 60),
             slack_webhook_url,
             slack_down_secs: Duration::from_secs(slack_down_secs.max(1)),
+            web_push,
         })
     }
 

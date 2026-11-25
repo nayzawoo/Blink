@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Activity, CloudOff, Download, LogOut, Moon, RefreshCw, Settings, Sun, WifiOff } from "lucide-react"
+import { Activity, Bell, BellRing, CloudOff, Download, LogOut, Moon, RefreshCw, Settings, Sun, WifiOff } from "lucide-react"
 
 import { LoginScreen } from "@/components/login-screen"
 import { RatesCard } from "@/components/rates-card"
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useMonitor } from "@/hooks/use-monitor"
+import { usePushNotifications } from "@/hooks/use-push"
 import { useOnlineStatus, usePwaInstall, usePwaUpdate } from "@/hooks/use-pwa"
 import { loadSettings, saveSettings, settingsConfigured, type Settings as AppSettings } from "@/lib/api"
 import { clearAuthentication, isAuthenticated } from "@/lib/auth"
@@ -29,6 +30,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   const online = useOnlineStatus()
   const { canInstall, install } = usePwaInstall()
   const { needRefresh, applyUpdate, dismissUpdate } = usePwaUpdate()
+  const push = usePushNotifications(settings)
 
   const chat = useMonitor("chat", settings, online)
   const map = useMonitor("set", settings, online)
@@ -71,6 +73,28 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               <Button variant="secondary" size="sm" onClick={() => void install()}>
                 <Download className="size-4" />
                 <span className="hidden sm:inline">Install</span>
+              </Button>
+            )}
+            {configured && (push.supported || push.needsHomeScreenInstall) && (
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={push.busy}
+                onClick={() => {
+                  if (push.subscribed || push.needsHomeScreenInstall) {
+                    setSettingsOpen(true)
+                  } else {
+                    void push.enable()
+                  }
+                }}
+                aria-label={push.subscribed ? "Push alerts enabled" : "Enable push alerts"}
+                title={push.subscribed ? "Push alerts enabled (click to test or manage)" : "Enable push alerts"}
+              >
+                {push.subscribed ? (
+                  <BellRing className="size-4 text-emerald-500" />
+                ) : (
+                  <Bell className="size-4" />
+                )}
               </Button>
             )}
             <Button
@@ -180,6 +204,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           onOpenChange={setSettingsOpen}
           settings={settings}
           onSave={persistSettings}
+          push={push}
         />
       )}
     </div>

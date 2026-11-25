@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev build check clean auth-hash secrets-encrypt \
+.PHONY: help install dev build check clean auth-hash secrets-encrypt vapid-keys \
         web-install web-dev web-build web-lint web-format web-typecheck web-pwa-assets \
         monitor-check monitor-build monitor-test monitor-fmt monitor-lint \
         monitor-run-chat monitor-run-set setup-env \
@@ -70,6 +70,9 @@ auth-hash: ## Print a new PBKDF2 credential block for web/src/lib/auth-credentia
 
 secrets-encrypt: ## Print an AES-256-GCM encrypted secrets block for web/src/lib/encrypted-secrets.ts
 	@node scripts/generate-encrypted-secrets.mjs
+
+vapid-keys: ## Generate a new VAPID P-256 keypair for Web Push alerts
+	@node scripts/generate-vapid-keys.mjs
 
 ## Production
 

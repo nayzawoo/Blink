@@ -1,6 +1,9 @@
 use crate::config::Config;
 use crate::db::Db;
-use crate::models::{DiskStatus, MemStatus, ProcessStatus, ServiceStatus, StatusSnapshot};
+use crate::models::{
+    DiskStatus, MemStatus, ProcessStatus, PushPayload, ServiceStatus, StatusSnapshot,
+};
+use crate::push;
 use crate::slack;
 use anyhow::Result;
 use chrono::Utc;
@@ -51,7 +54,7 @@ pub async fn run_loop(config: Config, db: Arc<Db>, latest: Arc<RwLock<Option<Sta
                     warn!(error = %err, "sqlite insert failed");
                 }
 
-                evaluate_slack_alerts(&config, &slack_http, &snap, &mut alerts).await;
+                evaluate_alerts(&config, &db, &slack_http, &snap, &mut alerts).await;
 
                 *latest.write().await = Some(snap);
 
@@ -68,16 +71,19 @@ pub async fn run_loop(config: Config, db: Arc<Db>, latest: Arc<RwLock<Option<Sta
     }
 }
 
-/// After continuous DOWN for `slack_down_secs`, post once; post again on recovery.
-async fn evaluate_slack_alerts(
+/// After continuous DOWN for `slack_down_secs`, alert once; alert again on recovery.
+async fn evaluate_alerts(
     config: &Config,
+    db: &Db,
     http: &reqwest::Client,
     snap: &StatusSnapshot,
     alerts: &mut HashMap<String, ServiceAlertState>,
 ) {
-    let Some(webhook) = config.slack_webhook_url.as_deref() else {
+    let webhook = config.slack_webhook_url.as_deref();
+    let web_push = config.web_push.as_ref();
+    if webhook.is_none() && web_push.is_none() {
         return;
-    };
+    }
 
     let now = Instant::now();
     let threshold = config.slack_down_secs;
@@ -87,13 +93,24 @@ async fn evaluate_slack_alerts(
 
         if svc.up {
             if state.down_notified {
-                let text = format!(
-                    "✅ *{}* / `{}` is back UP on `{}`",
-                    svc.name,
-                    config.agent.as_str(),
-                    config.host_name
-                );
-                slack::post_webhook(http, webhook, &text).await;
+                if let Some(url) = webhook {
+                    let text = format!(
+                        "✅ *{}* / `{}` is back UP on `{}`",
+                        svc.name,
+                        config.agent.as_str(),
+                        config.host_name
+                    );
+                    slack::post_webhook(http, url, &text).await;
+                }
+                if let Some(push_cfg) = web_push {
+                    let payload = PushPayload {
+                        title: "Blink Recovered".into(),
+                        body: format!("{} is back UP on {}", svc.name, config.host_name),
+                        url: "/#servers".into(),
+                        tag: format!("blink-alert-{}", svc.name),
+                    };
+                    push::broadcast(db, push_cfg, &payload).await;
+                }
             }
             state.down_since = None;
             state.down_notified = false;
@@ -104,13 +121,24 @@ async fn evaluate_slack_alerts(
         let since = state.down_since.get_or_insert(now);
         if !state.down_notified && now.duration_since(*since) >= threshold {
             let secs = threshold.as_secs();
-            let text = format!(
-                "🚨 *ALARM* · `{}` / `{}` DOWN ≥{secs}s on `{}`",
-                svc.name,
-                config.agent.as_str(),
-                config.host_name
-            );
-            slack::post_webhook(http, webhook, &text).await;
+            if let Some(url) = webhook {
+                let text = format!(
+                    "🚨 *ALARM* · `{}` / `{}` DOWN ≥{secs}s on `{}`",
+                    svc.name,
+                    config.agent.as_str(),
+                    config.host_name
+                );
+                slack::post_webhook(http, url, &text).await;
+            }
+            if let Some(push_cfg) = web_push {
+                let payload = PushPayload {
+                    title: "Blink Alarm".into(),
+                    body: format!("{} DOWN ≥{secs}s on {}", svc.name, config.host_name),
+                    url: "/#servers".into(),
+                    tag: format!("blink-alert-{}", svc.name),
+                };
+                push::broadcast(db, push_cfg, &payload).await;
+            }
             state.down_notified = true;
         }
     }
