@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
       VitePWA({
-        registerType: "autoUpdate",
+        registerType: "prompt",
         includeAssets: ["favicon.ico", "logo.svg", "apple-touch-icon-180x180.png"],
         manifest: {
           id: "/",
@@ -26,13 +26,30 @@ export default defineConfig(({ mode }) => {
           description: "Server status and IoT remote dashboard",
           lang: "en",
           dir: "ltr",
-          theme_color: "#0b1120",
-          background_color: "#0b1120",
+          theme_color: "#141414",
+          background_color: "#141414",
           display: "standalone",
+          display_override: ["window-controls-overlay", "standalone"],
           orientation: "any",
           start_url: "/",
           scope: "/",
           categories: ["utilities", "productivity"],
+          shortcuts: [
+            {
+              name: "Server Status",
+              short_name: "Servers",
+              description: "View live server telemetry",
+              url: "/#servers",
+              icons: [{ src: "pwa-192x192.png", sizes: "192x192", type: "image/png" }],
+            },
+            {
+              name: "Samsung TV Remote",
+              short_name: "TV Remote",
+              description: "Open Stick IR TV remote",
+              url: "/#remote",
+              icons: [{ src: "pwa-192x192.png", sizes: "192x192", type: "image/png" }],
+            },
+          ],
           icons: [
             { src: "pwa-64x64.png", sizes: "64x64", type: "image/png" },
             { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
@@ -41,12 +58,16 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
+          cleanupOutdatedCaches: true,
           navigateFallback: "/index.html",
+          navigateFallbackDenylist: [/^\/(chat-api|set-api|stick-api|blink|api)\//],
           globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
           runtimeCaching: [
             {
               urlPattern: ({ url }) =>
-                ["/chat-api", "/set-api", "/stick-api"].some((prefix) => url.pathname.startsWith(prefix)),
+                ["/chat-api", "/set-api", "/stick-api", "/blink", "/api"].some((prefix) =>
+                  url.pathname.startsWith(prefix)
+                ),
               handler: "NetworkOnly",
               options: { cacheName: "blink-live-api" },
             },

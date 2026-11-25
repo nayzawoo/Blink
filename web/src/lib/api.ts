@@ -53,6 +53,12 @@ function authHeaders(token: string): Record<string, string> {
   return token.trim() ? { Authorization: `Bearer ${token.trim()}` } : {}
 }
 
+function timeoutSignal(ms: number): AbortSignal | undefined {
+  return typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
+    ? AbortSignal.timeout(ms)
+    : undefined
+}
+
 async function getJson<T>(url: string, token: string): Promise<T> {
   const response = await fetch(url, {
     method: "GET",
@@ -61,6 +67,7 @@ async function getJson<T>(url: string, token: string): Promise<T> {
       ...authHeaders(token),
     },
     cache: "no-store",
+    signal: timeoutSignal(8000),
   })
 
   if (!response.ok) {
@@ -93,6 +100,7 @@ export async function sendStickCommand(
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ cmd }),
+    signal: timeoutSignal(8000),
   })
 
   if (response.status === 401) throw new Error("Stick IR token was rejected (401)")

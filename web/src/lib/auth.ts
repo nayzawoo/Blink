@@ -69,16 +69,16 @@ export async function verifyCredentials(username: string, password: string): Pro
 
 export function isAuthenticated(): boolean {
   try {
-    return sessionStorage.getItem(SESSION_KEY) === String(AUTH_CREDENTIALS.version)
+    return localStorage.getItem(SESSION_KEY) === String(AUTH_CREDENTIALS.version)
   } catch {
     return false
   }
 }
 
 export function markAuthenticated(): void {
-  sessionStorage.setItem(SESSION_KEY, String(AUTH_CREDENTIALS.version))
+  localStorage.setItem(SESSION_KEY, String(AUTH_CREDENTIALS.version))
 }
 
 export function clearAuthentication(): void {
-  sessionStorage.removeItem(SESSION_KEY)
+  localStorage.removeItem(SESSION_KEY)
 }

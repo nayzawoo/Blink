@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Activity, LogOut, Moon, Settings, Sun, WifiOff } from "lucide-react"
+import { Activity, CloudOff, Download, LogOut, Moon, RefreshCw, Settings, Sun, WifiOff } from "lucide-react"
 
 import { LoginScreen } from "@/components/login-screen"
 import { RatesCard } from "@/components/rates-card"
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useMonitor } from "@/hooks/use-monitor"
+import { useOnlineStatus, usePwaInstall, usePwaUpdate } from "@/hooks/use-pwa"
 import { loadSettings, saveSettings, settingsConfigured, type Settings as AppSettings } from "@/lib/api"
 import { clearAuthentication, isAuthenticated } from "@/lib/auth"
 import { cn } from "@/lib/utils"
@@ -25,9 +26,12 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [settings, setSettings] = useState<AppSettings>(loadSettings)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const { theme, setTheme } = useTheme()
+  const online = useOnlineStatus()
+  const { canInstall, install } = usePwaInstall()
+  const { needRefresh, applyUpdate, dismissUpdate } = usePwaUpdate()
 
-  const chat = useMonitor("chat", settings)
-  const map = useMonitor("set", settings)
+  const chat = useMonitor("chat", settings, online)
+  const map = useMonitor("set", settings, online)
   const configured = settingsConfigured(settings)
   const anyDown = isDown(chat) || isDown(map)
 
@@ -38,7 +42,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
-      <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b bg-background/85 pt-[env(safe-area-inset-top)] backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
             <img src="/logo.svg" alt="" className="size-9 rounded-xl" />
@@ -50,17 +54,25 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
           <div className="flex items-center gap-2">
             <Badge
-              variant={anyDown ? "destructive" : configured ? "secondary" : "outline"}
-              className={cn(!anyDown && configured && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400")}
+              variant={!online || anyDown ? "destructive" : configured ? "secondary" : "outline"}
+              className={cn(
+                online && !anyDown && configured && "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+              )}
             >
               <span
                 className={cn(
                   "size-1.5 rounded-full",
-                  anyDown ? "bg-red-500" : configured ? "bg-emerald-500" : "bg-muted-foreground"
+                  !online || anyDown ? "bg-red-500" : configured ? "bg-emerald-500" : "bg-muted-foreground"
                 )}
               />
-              {anyDown ? "Alarm" : configured ? "All systems" : "Not configured"}
+              {!online ? "Offline" : anyDown ? "Alarm" : configured ? "All systems" : "Not configured"}
             </Badge>
+            {canInstall && (
+              <Button variant="secondary" size="sm" onClick={() => void install()}>
+                <Download className="size-4" />
+                <span className="hidden sm:inline">Install</span>
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -87,7 +99,37 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 pb-20">
+      <main className="mx-auto max-w-7xl space-y-5 px-4 py-6 pb-[calc(5rem+env(safe-area-inset-bottom))]">
+        {needRefresh && (
+          <Alert className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <RefreshCw className="mt-0.5 size-4 shrink-0" />
+              <div>
+                <AlertTitle>Update available</AlertTitle>
+                <AlertDescription>A newer version of Blink is ready.</AlertDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" onClick={dismissUpdate}>
+                Later
+              </Button>
+              <Button size="sm" onClick={applyUpdate}>
+                Reload
+              </Button>
+            </div>
+          </Alert>
+        )}
+
+        {!online && (
+          <Alert variant="destructive">
+            <CloudOff className="size-4" />
+            <AlertTitle>You are offline</AlertTitle>
+            <AlertDescription>
+              Live polling is paused and will resume automatically when your connection returns.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {!configured && (
           <Card>
             <CardHeader>
@@ -106,7 +148,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           </Card>
         )}
 
-        {configured && anyDown && (
+        {configured && online && anyDown && (
           <Alert variant="destructive">
             <WifiOff className="size-4" />
             <AlertTitle>Service down</AlertTitle>
@@ -116,7 +158,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           </Alert>
         )}
 
-        <section className="grid gap-5 lg:grid-cols-2">
+        <section id="servers" className="grid scroll-mt-20 gap-5 lg:grid-cols-2">
           <ServerCard server="chat" data={chat} />
           <ServerCard server="set" data={map} />
         </section>

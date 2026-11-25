@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { fetchHistory, fetchStatus, settingsConfigured, type Settings } from "@/lib/api"
 import type { HistoryPoint, LiveSample, ServerKey, StatusSnapshot } from "@/lib/types"
@@ -16,18 +16,21 @@ function toSample(status: StatusSnapshot): LiveSample {
   }
 }
 
-export function useMonitor(server: ServerKey, settings: Settings) {
+export function useMonitor(server: ServerKey, settings: Settings, online = true) {
   const [status, setStatus] = useState<StatusSnapshot | null>(null)
   const [history, setHistory] = useState<HistoryPoint[]>([])
   const [live, setLive] = useState<LiveSample[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [historyLoading, setHistoryLoading] = useState(false)
+  const statusInFlight = useRef(false)
+  const historyInFlight = useRef(false)
 
   const configured = settingsConfigured(settings)
 
   const refreshStatus = useCallback(async () => {
-    if (!configured) return
+    if (!configured || !online || statusInFlight.current) return
+    statusInFlight.current = true
     try {
       const next = await fetchStatus(server, settings)
       const sample = toSample(next)
@@ -40,12 +43,14 @@ export function useMonitor(server: ServerKey, settings: Settings) {
     } catch (cause) {
       setError(errorMessage(cause))
     } finally {
+      statusInFlight.current = false
       setLoading(false)
     }
-  }, [configured, server, settings])
+  }, [configured, online, server, settings])
 
   const refreshHistory = useCallback(async () => {
-    if (!configured) return
+    if (!configured || !online || historyInFlight.current) return
+    historyInFlight.current = true
     setHistoryLoading(true)
     try {
       const next = await fetchHistory(server, settings)
@@ -54,9 +59,10 @@ export function useMonitor(server: ServerKey, settings: Settings) {
     } catch (cause) {
       setError(errorMessage(cause))
     } finally {
+      historyInFlight.current = false
       setHistoryLoading(false)
     }
-  }, [configured, server, settings])
+  }, [configured, online, server, settings])
 
   useEffect(() => {
     if (!configured) {
@@ -70,18 +76,50 @@ export function useMonitor(server: ServerKey, settings: Settings) {
       return
     }
 
-    queueMicrotask(() => void refreshStatus())
-    const interval = window.setInterval(() => void refreshStatus(), Math.max(500, settings.refreshMs))
-    return () => window.clearInterval(interval)
-  }, [configured, refreshStatus, settings.refreshMs])
+    if (!online) return
+
+    const pollIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshStatus()
+      }
+    }
+
+    queueMicrotask(pollIfVisible)
+    const interval = window.setInterval(pollIfVisible, Math.max(500, settings.refreshMs))
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void refreshStatus()
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility)
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
+  }, [configured, online, refreshStatus, settings.refreshMs])
 
   useEffect(() => {
-    if (!configured) return
+    if (!configured || !online) return
 
-    queueMicrotask(() => void refreshHistory())
-    const interval = window.setInterval(() => void refreshHistory(), 60_000)
-    return () => window.clearInterval(interval)
-  }, [configured, refreshHistory])
+    const pollIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshHistory()
+      }
+    }
+
+    queueMicrotask(pollIfVisible)
+    const interval = window.setInterval(pollIfVisible, 60_000)
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void refreshHistory()
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility)
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
+  }, [configured, online, refreshHistory])
 
   return {
     status,

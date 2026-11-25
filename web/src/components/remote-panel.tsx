@@ -35,6 +35,9 @@ export function RemotePanel({ settings }: { settings: Settings }) {
   const hasToken = settings.stickIrToken.trim().length > 0
 
   const send = async (cmd: string) => {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate(12)
+    }
     pendingRef.current += 1
     setPending(pendingRef.current)
     try {
@@ -50,7 +53,7 @@ export function RemotePanel({ settings }: { settings: Settings }) {
   }
 
   return (
-    <Card className="h-full">
+    <Card id="remote" className="h-full scroll-mt-20">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Tv className="size-4 text-muted-foreground" />
@@ -89,7 +92,7 @@ export function RemotePanel({ settings }: { settings: Settings }) {
               <Button
                 key={cmd}
                 variant={cmd === "power" ? "destructive" : "secondary"}
-                className="h-14 flex-col gap-1"
+                className="h-14 touch-manipulation select-none flex-col gap-1"
                 disabled={!hasToken}
                 onClick={() => void send(cmd)}
                 title={label}
@@ -108,7 +111,7 @@ export function RemotePanel({ settings }: { settings: Settings }) {
               <Button
                 key={`${cmd}-${index}`}
                 variant="outline"
-                className={cn("h-11", isDigit && "text-base font-semibold")}
+                className={cn("h-11 touch-manipulation select-none", isDigit && "text-base font-semibold")}
                 disabled={!hasToken}
                 onClick={() => void send(cmd)}
               >

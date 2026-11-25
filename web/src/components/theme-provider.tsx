@@ -112,6 +112,11 @@ export function ThemeProvider({
       root.classList.remove("light", "dark")
       root.classList.add(resolvedTheme)
 
+      const themeMeta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+      if (themeMeta) {
+        themeMeta.content = resolvedTheme === "dark" ? "#141414" : "#ffffff"
+      }
+
       if (restoreTransitions) {
         restoreTransitions()
       }
