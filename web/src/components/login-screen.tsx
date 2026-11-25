@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { loadSettings, saveSettings } from "@/lib/api"
 import { markAuthenticated, verifyCredentials } from "@/lib/auth"
+import { decryptEmbeddedSecrets } from "@/lib/secrets"
 
 export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
   const [username, setUsername] = useState("")
@@ -24,6 +26,19 @@ export function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
     try {
       const valid = await verifyCredentials(username, password)
       if (valid) {
+        try {
+          const embedded = await decryptEmbeddedSecrets(password)
+          if (embedded) {
+            const current = loadSettings()
+            saveSettings({
+              ...current,
+              blinkApiKey: current.blinkApiKey.trim() || embedded.blinkApiKey,
+              stickIrToken: current.stickIrToken.trim() || embedded.stickIrToken,
+            })
+          }
+        } catch {
+          // Keep manual settings flow if embedded secrets cannot be decrypted.
+        }
         markAuthenticated()
         onSuccess()
       } else {

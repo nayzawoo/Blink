@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help install dev build check clean auth-hash \
+.PHONY: help install dev build check clean auth-hash secrets-encrypt \
         web-install web-dev web-build web-lint web-format web-typecheck web-pwa-assets \
         monitor-check monitor-build monitor-test monitor-fmt monitor-lint \
         monitor-run-chat monitor-run-set setup-env \
@@ -67,6 +67,9 @@ setup-env: ## Create blink-monitor/.env from the chat example
 
 auth-hash: ## Print a new PBKDF2 credential block for web/src/lib/auth-credentials.ts
 	@node scripts/generate-auth-hash.mjs
+
+secrets-encrypt: ## Print an AES-256-GCM encrypted secrets block for web/src/lib/encrypted-secrets.ts
+	@node scripts/generate-encrypted-secrets.mjs
 
 ## Production
 
